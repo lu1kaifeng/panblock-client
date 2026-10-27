@@ -1,8 +1,10 @@
-import React, {use, useState} from 'react';
+import React, {use, useEffect, useState} from 'react';
 import { GenomeBrowser } from '~/components/DnaSequenceViewer';
 // Assumes GenomeBrowser component is in the same directory
 import { Dna, Filter, Layers, Search, Info, Settings, Download } from 'lucide-react';
-import {type Contig, NAM01Blocks, Samples, SynBlock, SynBlocks} from "~/models/SynBlock";
+import {type Contig, Link, SynBlock} from "~/data/SynBlock";
+import {sampleData} from '~/data/preproc.compile'
+import {loadLoadLinksBetween,Samples} from "~/data/registry";
 
 interface FeatureFilter {
     id: string;
@@ -12,12 +14,30 @@ interface FeatureFilter {
 }
 
 export const GenomeBrowserPage: React.FC = () => {
-    const [chromosome, setChromosome] = useState<string>('chr1');
+    const [chromosome, setChromosome] = useState<string>('A03');
     const [searchQuery, setSearchQuery] = useState<string>('');
 
-
-    const [samples,setSamples] = useState<{contig: Contig,synBlocks:SynBlock[],enabled: boolean}[]>(Samples.map((s,idx)=> ({contig: s,synBlocks:SynBlocks[idx],enabled: true})))
-
+    const [samples,setSamples] = useState<Contig[]>(Samples.filter(s=>s.contig == chromosome))
+    //const [refLine,setRefLine] = useState<Contig>(samples[0]);
+    //const [altLines,setAltLines] = useState<Contig[]>(Samples.filter(s=>s!==refLine));
+    const [links, setLinks] = useState<(Link[] | null)[] >([]);
+    useEffect(()=>{
+        (async()=>{
+            if(Samples != null){
+                let i = 0
+                let j = 1
+                let l: (Link[] | null)[] = []
+                while(samples.length > j){
+                    let blocks = await loadLoadLinksBetween(samples[i],samples[j])
+                    l.push(blocks)
+                    i++
+                    j++
+                }
+                //alert(JSON.stringify(l))
+                setLinks(l)
+        }
+        })()
+    },[samples])
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#F3F4F6', color: '#1F2937', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
     {/* Header */}
@@ -89,7 +109,7 @@ export const GenomeBrowserPage: React.FC = () => {
 
     {/* Integrated Konva Browser */}
     <div style={{ display: 'flex', justifyContent: 'center' }}>
-    <GenomeBrowser totalKbp={50000} width={1180} height={300} contigs={samples.filter(s=>s.enabled).map(s=>({contig: s.contig,synBlocks: s.synBlocks}))} />
+    <GenomeBrowser totalKbp={50000} width={1180} height={300} contigs={samples} links={links} />
     </div>
     </div>
 
@@ -101,7 +121,7 @@ export const GenomeBrowserPage: React.FC = () => {
     <Filter size={16} /> Track Filters
     </h3>
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-    {samples.map((sample,idx) => (
+    {/*samples.map((sample,idx) => (
         <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '13px', color: '#374151' }}>
         <input
             type="checkbox"
@@ -118,7 +138,7 @@ export const GenomeBrowserPage: React.FC = () => {
         <span style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: sample.contig.color, display: 'inline-block' }}></span>
         {sample.contig.line}
         </label>
-    ))}
+    ))*/}
     </div>
     </div>
 

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Stage, Layer, Line, Text, Rect, Group } from 'react-konva';
 import { ZoomIn, ZoomOut, RotateCcw, MoveHorizontal } from 'lucide-react';
 import Konva from 'konva';
-import {Contig, Samples, SynBlock} from "~/models/SynBlock";
+import {Contig, Link, SynBlock} from "~/data/SynBlock";
 
 interface GenomicFeature {
     id: string;
@@ -18,7 +18,8 @@ interface GenomeBrowserProps {
     width?: number;
     height?: number;
     initialKbpPerPx?: number;
-    contigs: {contig:Contig,synBlocks:SynBlock[]}[];
+    contigs: Contig[];
+    links?: (Link[] | null)[];
 }
 
 const DEFAULT_FEATURES: GenomicFeature[] = [
@@ -33,7 +34,7 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                                                 width = 800,
                                                                 height = 280,
                                                                 initialKbpPerPx = 70, // Default zoom: 1 px = 70 kb (~50 Mb fits across ~714px)
-                                                                             contigs = [],
+                                                                             contigs = [],links = []
 }) => {
     const [kbpPerPx, setKbpPerPx] = useState<number>(initialKbpPerPx);
     const [stageX, setStageX] = useState<number>(0);
@@ -72,7 +73,6 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
         setStageX(clampX(e.target.x()));
         e.target.y(0);
     };
-
     // Adaptive tick intervals adjusted for up to 50 Mb scale
     const tickIntervalKbp = useMemo(() => {
         const rawSpan = kbpPerPx * 120;
@@ -175,44 +175,106 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                 </Group>
                             );
                         })}
-
                         {/* Genomic Features placed relative to 50 Mb scale */}
-                        {contigs.map((feature, idx) => {
-                            const featureX = marginX + feature.contig.startBp.kBp / kbpPerPx;
-                            const featureWidth = (feature.contig.endBp.kBp - feature.contig.startBp.kBp) / kbpPerPx;
-                            const featureY = scaleY + 35 + idx * 50;
+                        {
+                            contigs.map((feature, idx) => {
+                                const featureX = marginX + feature.startBp.kBp / kbpPerPx;
+                                const featureWidth = (feature.endBp.kBp - feature.startBp.kBp) / kbpPerPx;
+                                const featureY = scaleY + 35 + idx * 50;
+                                const nextFeatureY = scaleY + 35 + (idx+1) * 50;
 
-                            return (
-                                <Group key={idx}>
-                                    <Rect
+                                return (
+                                    <Group key={idx}>
+                                        <Rect
                                         x={featureX}
                                         y={featureY}
                                         width={Math.max(3, featureWidth)}
                                         height={26}
-                                        fill={feature.contig.color}
+                                        fill={'lightgrey'}
                                         cornerRadius={4}
                                     />
-                                    <Text
-                                        x={featureX + 6}
-                                        y={featureY + 6}
-                                        text={`${feature.contig.line} (${formatLabel(feature.contig.startBp.kBp)} - ${formatLabel(feature.contig.endBp.kBp)})`}
-                                        fontSize={11}
-                                        fontStyle="bold"
-                                        fill="#FFFFFF"
-                                        listening={false}
-                                    />
-                                    {feature.synBlocks.map((synBlock, i) => {
+                                        <Text
+                                            x={featureX + 6}
+                                            y={featureY + 6}
+                                            text={`${feature.line} (${formatLabel(feature.startBp.kBp)} - ${formatLabel(feature.endBp.kBp)})`}
+                                            fontSize={11}
+                                            fontStyle="bold"
+                                            fill="#FFFFFF"
+                                            listening={false}
+                                        />
 
-                                        return (<Rect
+                                    </Group>
+                                );
+                            })}
+                        {/* Genomic Features placed relative to 50 Mb scale */}
+                        {
+                            contigs.map((feature, idx) => {
+                            const featureX = marginX + feature.startBp.kBp / kbpPerPx;
+                            const featureWidth = (feature.endBp.kBp - feature.startBp.kBp) / kbpPerPx;
+                            const featureY = scaleY + 35 + idx * 50;
+                            const nextFeatureY = scaleY + 35 + (idx+1) * 50;
+
+                            return (
+                                <Group key={`${idx}-blocks`}>
+                                    {idx < links.length ? links[idx]?.map((synBlock, i) => {
+                                        if (idx == 0)
+                                        return (<Group
                                             key={`${idx}-${i}`}
-                                            x={featureX+ synBlock.startBp.kBp / kbpPerPx}
-                                            y={featureY}
-                                            width={(synBlock.endBp.kBp - synBlock.startBp.kBp) / kbpPerPx}
-                                            height={26}
-                                            fill="#10B981"
-                                            cornerRadius={4}
-                                        />)}
-                                    )}
+                                        >
+
+                                            <Rect
+
+                                                x={featureX+ synBlock.from[0].kBp / kbpPerPx}
+                                                y={featureY}
+                                                width={(synBlock.from[1].kBp - synBlock.from[0].kBp) / kbpPerPx}
+                                                height={26}
+                                                fill={synBlock.fromLine.color+"C0"}
+                                                cornerRadius={4}
+                                            />
+                                            <Line
+                                                stroke="grey"
+                                                strokeWidth={1}
+                                                lineCap="round"
+                                                lineJoin="round"
+
+                                                points={[featureX+ synBlock.from[0].kBp / kbpPerPx + (synBlock.from[1].kBp - synBlock.from[0].kBp) / kbpPerPx / 2,featureY+26,
+                                                featureX+ synBlock.from[0].kBp / kbpPerPx + (synBlock.from[1].kBp - synBlock.from[0].kBp) / kbpPerPx / 2,(featureY+nextFeatureY+26) / 2,
+                                                featureX+ synBlock.to[0].kBp / kbpPerPx + (synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx / 2,(featureY+nextFeatureY+26) / 2,
+                                                featureX+ synBlock.to[0].kBp / kbpPerPx + (synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx / 2,nextFeatureY]} />
+                                            <Rect
+
+                                                x={featureX+ synBlock.to[0].kBp / kbpPerPx}
+                                                y={nextFeatureY}
+                                                width={(synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx}
+                                                height={26}
+                                                fill={synBlock.toLine.color+"C0"}
+                                                cornerRadius={4}
+                                            />
+                                        </Group>)
+                                        else
+                                            return (<Group key={`${idx}-${i}`} >
+                                                <Line
+                                                    stroke="grey"
+                                                    strokeWidth={1}
+                                                    lineCap="round"
+                                                    lineJoin="round"
+
+                                                    points={[featureX+ synBlock.from[0].kBp / kbpPerPx + (synBlock.from[1].kBp - synBlock.from[0].kBp) / kbpPerPx / 2,featureY+26,
+                                                        featureX+ synBlock.from[0].kBp / kbpPerPx + (synBlock.from[1].kBp - synBlock.from[0].kBp) / kbpPerPx / 2,(featureY+nextFeatureY+26) / 2,
+                                                        featureX+ synBlock.to[0].kBp / kbpPerPx + (synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx / 2,(featureY+nextFeatureY+26) / 2,
+                                                        featureX+ synBlock.to[0].kBp / kbpPerPx + (synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx / 2,nextFeatureY]} />
+                                                <Rect
+
+                                                    x={featureX+ synBlock.to[0].kBp / kbpPerPx}
+                                                    y={nextFeatureY}
+                                                    width={(synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx}
+                                                    height={26}
+                                                    fill={synBlock.toLine.color+"C0"}
+                                                    cornerRadius={4}
+                                                />
+                                            </Group>)
+                                    }
+                                    ):(<Group key={`${idx}-1`}></Group>)}
                                 </Group>
                             );
                         })}
