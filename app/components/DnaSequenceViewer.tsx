@@ -1,8 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Stage, Layer, Line, Text, Rect, Group } from 'react-konva';
+import {Stage, Layer, Line, Text, Rect, Group, Path} from 'react-konva';
 import { ZoomIn, ZoomOut, RotateCcw, MoveHorizontal } from 'lucide-react';
 import Konva from 'konva';
 import {Contig, Link, SynBlock} from "~/data/SynBlock";
+import {getColor, getVerticalRibbonPath} from "~/data/utils";
+import {RightAlignedLabel} from "~/components/RightAlignedLabel";
 
 interface GenomicFeature {
     id: string;
@@ -19,7 +21,9 @@ interface GenomeBrowserProps {
     height?: number;
     initialKbpPerPx?: number;
     contigs: Contig[];
-    links?: (Link[] | null)[];
+    links: Link[][];
+    blocks: SynBlock[][];
+    contigList: Contig[];
 }
 
 const DEFAULT_FEATURES: GenomicFeature[] = [
@@ -32,15 +36,17 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                                                 totalKbp = 50000, // 50 Megabases max scale
                                                                 features = DEFAULT_FEATURES,
                                                                 width = 800,
-                                                                height = 280,
+                                                                height = 380,
                                                                 initialKbpPerPx = 70, // Default zoom: 1 px = 70 kb (~50 Mb fits across ~714px)
-                                                                             contigs = [],links = []
+                                                                             contigs = [],links = [],blocks = [],contigList
 }) => {
     const [kbpPerPx, setKbpPerPx] = useState<number>(initialKbpPerPx);
     const [stageX, setStageX] = useState<number>(0);
 
     const marginX = 60;
     const scaleY = 60;
+
+    const YSpacing = 70
 
     const minKbpPerPx = 0.5;  // High zoom-in detail level
     const maxKbpPerPx = 150;  // Wide overview level
@@ -94,6 +100,16 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
     }, [totalKbp, tickIntervalKbp]);
 
     const formatLabel = (kbp: number) => {
+        const pixelGap = tickIntervalKbp / kbpPerPx;
+
+        // Dynamically skip labels if the space between ticks is too narrow
+        const skipFactor = pixelGap < 45 ? 4 : pixelGap < 75 ? 2 : 1;
+        const tickIndex = Math.round(kbp / tickIntervalKbp);
+
+        if (kbp > 0 && tickIndex % skipFactor !== 0) {
+            return ''; // Hide overlapping label text while leaving the tick mark
+        }
+
         if (kbp >= 1000 && kbp % 1000 === 0) {
             return `${kbp / 1000}Mb`;
         }
@@ -180,9 +196,9 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                             contigs.map((feature, idx) => {
                                 const featureX = marginX + feature.startBp.kBp / kbpPerPx;
                                 const featureWidth = (feature.endBp.kBp - feature.startBp.kBp) / kbpPerPx;
-                                const featureY = scaleY + 35 + idx * 50;
-                                const nextFeatureY = scaleY + 35 + (idx+1) * 50;
-
+                                const featureY = scaleY + 35 + idx * YSpacing;
+                                const nextFeatureY = scaleY + 35 + (idx+1) * YSpacing;
+                                console.log(blocks)
                                 return (
                                     <Group key={idx}>
                                         <Rect
@@ -193,16 +209,30 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                         fill={'lightgrey'}
                                         cornerRadius={4}
                                     />
-                                        <Text
-                                            x={featureX + 6}
+                                        <RightAlignedLabel
+                                            x={featureX - 6}
                                             y={featureY + 6}
-                                            text={`${feature.line} (${formatLabel(feature.startBp.kBp)} - ${formatLabel(feature.endBp.kBp)})`}
+                                            text={`${feature.line}`}
+                                            /*text={`${feature.line} (${formatLabel(feature.startBp.kBp)} - ${formatLabel(feature.endBp.kBp)})`}*/
                                             fontSize={11}
                                             fontStyle="bold"
-                                            fill="#FFFFFF"
-                                            listening={false}
+                                            fill="#000000"
                                         />
+                                        {
 
+
+                                            blocks[idx]?.map((b,bid)=>(
+                                                <Rect
+
+                                                    x={featureX+ b.startBp.kBp / kbpPerPx}
+                                                    y={featureY}
+                                                    width={(b.endBp.kBp - b.startBp.kBp) / kbpPerPx}
+                                                    height={26}
+                                                    fill={getColor(b,contigList,feature,'#000000')}
+                                                    cornerRadius={4}
+                                                />
+                                            ))
+                                        }
                                     </Group>
                                 );
                             })}
@@ -211,18 +241,16 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                             contigs.map((feature, idx) => {
                             const featureX = marginX + feature.startBp.kBp / kbpPerPx;
                             const featureWidth = (feature.endBp.kBp - feature.startBp.kBp) / kbpPerPx;
-                            const featureY = scaleY + 35 + idx * 50;
-                            const nextFeatureY = scaleY + 35 + (idx+1) * 50;
+                            const featureY = scaleY + 35 + idx * YSpacing;
+                            const nextFeatureY = scaleY + 35 + (idx+1) * YSpacing;
 
                             return (
-                                <Group key={`${idx}-blocks`}>
-                                    {idx < links.length ? links[idx]?.map((synBlock, i) => {
-                                        if (idx == 0)
-                                        return (<Group
-                                            key={`${idx}-${i}`}
+                                <Group key={`${idx}-links`}>
+                                    {idx < links.length ? links[idx]?.map((synBlock, i) =>  (<Group
+                                            key={`${synBlock.id}`}
                                         >
 
-                                            <Rect
+                                            {/*<Rect
 
                                                 x={featureX+ synBlock.from[0].kBp / kbpPerPx}
                                                 y={featureY}
@@ -230,18 +258,26 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                                 height={26}
                                                 fill={synBlock.fromLine.color+"C0"}
                                                 cornerRadius={4}
-                                            />
-                                            <Line
+                                            />*/}
+                                            {/*<Line
                                                 stroke="grey"
                                                 strokeWidth={1}
+                                                cornerRadius={20}
                                                 lineCap="round"
                                                 lineJoin="round"
-
+                                                tension={0.1}
                                                 points={[featureX+ synBlock.from[0].kBp / kbpPerPx + (synBlock.from[1].kBp - synBlock.from[0].kBp) / kbpPerPx / 2,featureY+26,
-                                                featureX+ synBlock.from[0].kBp / kbpPerPx + (synBlock.from[1].kBp - synBlock.from[0].kBp) / kbpPerPx / 2,(featureY+nextFeatureY+26) / 2,
-                                                featureX+ synBlock.to[0].kBp / kbpPerPx + (synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx / 2,(featureY+nextFeatureY+26) / 2,
-                                                featureX+ synBlock.to[0].kBp / kbpPerPx + (synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx / 2,nextFeatureY]} />
-                                            <Rect
+
+                                                featureX+ synBlock.to[0].kBp / kbpPerPx + (synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx / 2,nextFeatureY]} />*/}
+
+                                        <Path
+
+                                            data={getVerticalRibbonPath(featureY+26,featureX+ synBlock.from[0].kBp / kbpPerPx,featureX+ synBlock.from[0].kBp / kbpPerPx + (synBlock.from[1].kBp - synBlock.from[0].kBp) / kbpPerPx,nextFeatureY,featureX+ synBlock.to[0].kBp / kbpPerPx,featureX+ synBlock.to[0].kBp / kbpPerPx + (synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx)}
+                                            fill="rgba(150, 150, 150, 0.25)"
+                                            stroke="rgba(0, 0, 0, 0.05)"
+                                            strokeWidth={1}
+                                        />
+                                            {/*<Rect
 
                                                 x={featureX+ synBlock.to[0].kBp / kbpPerPx}
                                                 y={nextFeatureY}
@@ -249,32 +285,10 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                                 height={26}
                                                 fill={synBlock.toLine.color+"C0"}
                                                 cornerRadius={4}
-                                            />
+                                            />*/}
                                         </Group>)
-                                        else
-                                            return (<Group key={`${idx}-${i}`} >
-                                                <Line
-                                                    stroke="grey"
-                                                    strokeWidth={1}
-                                                    lineCap="round"
-                                                    lineJoin="round"
 
-                                                    points={[featureX+ synBlock.from[0].kBp / kbpPerPx + (synBlock.from[1].kBp - synBlock.from[0].kBp) / kbpPerPx / 2,featureY+26,
-                                                        featureX+ synBlock.from[0].kBp / kbpPerPx + (synBlock.from[1].kBp - synBlock.from[0].kBp) / kbpPerPx / 2,(featureY+nextFeatureY+26) / 2,
-                                                        featureX+ synBlock.to[0].kBp / kbpPerPx + (synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx / 2,(featureY+nextFeatureY+26) / 2,
-                                                        featureX+ synBlock.to[0].kBp / kbpPerPx + (synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx / 2,nextFeatureY]} />
-                                                <Rect
-
-                                                    x={featureX+ synBlock.to[0].kBp / kbpPerPx}
-                                                    y={nextFeatureY}
-                                                    width={(synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx}
-                                                    height={26}
-                                                    fill={synBlock.toLine.color+"C0"}
-                                                    cornerRadius={4}
-                                                />
-                                            </Group>)
-                                    }
-                                    ):(<Group key={`${idx}-1`}></Group>)}
+                                    ):(<Group key={`${idx}-links`}></Group>)}
                                 </Group>
                             );
                         })}

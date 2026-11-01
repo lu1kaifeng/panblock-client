@@ -4,8 +4,13 @@ import { GenomeBrowser } from '~/components/DnaSequenceViewer';
 import { Dna, Filter, Layers, Search, Info, Settings, Download } from 'lucide-react';
 import {type Contig, Link, SynBlock} from "~/data/SynBlock";
 import {sampleData} from '~/data/preproc.compile'
-import {loadLoadLinksBetween,Samples} from "~/data/registry";
+import {loadLoadBlocks, loadLoadLinksBetween, Samples} from "~/data/registry";
 import {ContigList} from "~/components/SampleSelector";
+import {vi} from "vitest";
+import {LoadingSpinner} from "~/components/LoadingSpinner";
+import {type PanblockDB, saveToDb} from "~/data/db";
+import type {IDBPDatabase} from "idb";
+import {PieChart, type PieChartItem} from "~/components/PieChart";
 
 interface FeatureFilter {
     id: string;
@@ -17,17 +22,25 @@ interface FeatureFilter {
 export const GenomeBrowserPage: React.FC = () => {
     const [chromosome, setChromosome] = useState<string>('A03');
     const [searchQuery, setSearchQuery] = useState<string>('');
-
+    const viewerHeight = 350
+    const viewerWidth = 1180
     const [samples,setSamples] = useState<{contig:Contig,enabled:boolean}[]>(Samples.filter(s=>s.contig == chromosome).map(s=>({contig:s, enabled:true})))
     //const [refLine,setRefLine] = useState<Contig>(samples[0]);
     //const [altLines,setAltLines] = useState<Contig[]>(Samples.filter(s=>s!==refLine));
-    const [links, setLinks] = useState<(Link[] | null)[] >([]);
+    const [links, setLinks] = useState<Link[][] >([]);
+    const [blocks, setBlocks] = useState<SynBlock[][]>([]);
+    const [visualLoading, setVisualLoading] = useState<boolean>(true);
+    const [statLoading, setStatLoading] = useState<boolean>(true);
+    const [pieChartItems, setPieChartItems] = useState<PieChartItem[]>([]);
+    //const [db,setDb] = useState<IDBPDatabase<PanblockDB> | undefined>(undefined)
     useEffect(()=>{
         (async()=>{
+            setVisualLoading(true);
+            setStatLoading(true);
             if(Samples != null){
                 let i = 0
                 let j = 1
-                let l: (Link[] | null)[] = []
+                let l: Link[][] = []
                 let enabled_samples = samples.filter(s=>s.enabled)
                 while(enabled_samples.length > j){
                     let blocks = await loadLoadLinksBetween(enabled_samples[i].contig,enabled_samples[j].contig)
@@ -35,8 +48,21 @@ export const GenomeBrowserPage: React.FC = () => {
                     i++
                     j++
                 }
-                //alert(JSON.stringify(l))
+                let b: SynBlock[][] = []
+                for(let i = 0; i < enabled_samples.length; i++){
+                    b.push(await loadLoadBlocks(enabled_samples[i].contig))
+                }
                 setLinks(l)
+                setBlocks(b)
+                setVisualLoading(false);
+                //const db = await saveToDb(links,blocks,enabled_samples.map(s=>s.contig))
+                //setDb(db)
+                setPieChartItems(enabled_samples.map((s,idx)=>({
+                    color:s.contig.color,
+                    value:b[idx]?.reduce((acc,cur)=>acc+(cur.originContig ? 0: 1),0) || 0 + b.flat().reduce((acc,cur)=>acc+(cur.originContig == s.contig.idx? 1: 0),0),
+                    label:s.contig.line
+                } as PieChartItem)).filter(i=>i.value != 0 ))
+                setStatLoading(false);
         }
         })()
     },[samples])
@@ -111,7 +137,7 @@ export const GenomeBrowserPage: React.FC = () => {
 
     {/* Integrated Konva Browser */}
     <div style={{ display: 'flex', justifyContent: 'center' }}>
-    <GenomeBrowser totalKbp={50000} width={1180} height={300} contigs={samples.filter(s=>s.enabled).map(s=>s.contig)} links={links} />
+        {visualLoading? (<LoadingSpinner width={viewerWidth} height={viewerHeight} text={"Track Viewer Loading..."}/>):(<GenomeBrowser totalKbp={50000} width={viewerWidth} height={viewerHeight} contigs={samples.filter(s=>s.enabled).map(s=>s.contig)} links={links} blocks={blocks} contigList={samples.map(s => s.contig)} />)}
     </div>
     </div>
 
@@ -149,8 +175,8 @@ export const GenomeBrowserPage: React.FC = () => {
     <h3 style={{ fontSize: '14px', fontWeight: 600, marginTop: 0, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
     <Info size={16} /> Region Summary
     </h3>
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-    <div style={{ backgroundColor: '#F9FAFB', padding: '12px', borderRadius: '6px', border: '1px solid #F3F4F6' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>{/*style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}*/}{statLoading?(<LoadingSpinner width={100} height={100} text={"Loading Statistics..."} />):(<PieChart width={300} height={300} data={pieChartItems}/>)}
+    {/*<div style={{ backgroundColor: '#F9FAFB', padding: '12px', borderRadius: '6px', border: '1px solid #F3F4F6' }}>
     <span style={{ fontSize: '11px', color: '#6B7280', display: 'block' }}>Assembly Version</span>
     <strong style={{ fontSize: '14px', color: '#111827' }}>GRCh38.p14</strong>
     </div>
@@ -161,7 +187,7 @@ export const GenomeBrowserPage: React.FC = () => {
     <div style={{ backgroundColor: '#F9FAFB', padding: '12px', borderRadius: '6px', border: '1px solid #F3F4F6' }}>
     <span style={{ fontSize: '11px', color: '#6B7280', display: 'block' }}>Mapped Features</span>
     <strong style={{ fontSize: '14px', color: '#111827' }}>1,248</strong>
-    </div>
+    </div>*/}
     </div>
     </div>
     </div>

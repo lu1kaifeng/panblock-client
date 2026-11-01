@@ -1,4 +1,5 @@
 import {getInfiniteHexColor} from "~/utils/colors";
+import {unstable_setDevServerHooks} from "react-router";
 
 export class BpPos{
     bp:number;
@@ -14,16 +15,24 @@ export class BpPos{
     toString(){
         return this.bp.toString();
     }
+    toJSON(){
+        return this.bp
+    }
+    fromJSON(bp:number){
+        return new BpPos(bp)
+    }
 }
 
 export class Contig{
+    idx:number;
     line: string;
     contig: string;
     startBp: BpPos;
     endBp: BpPos;
     color: string;
     static colorIdx = 0
-    constructor(line: string, contig: string, startBp: number, endBp: number) {
+    constructor(idx:number,line: string, contig: string, startBp: number, endBp: number) {
+        this.idx = idx;
         this.line = line;
         this.contig = contig;
         this.startBp = new BpPos(startBp);
@@ -36,21 +45,23 @@ export class Contig{
     }
     toJSON(){
         return {
+            idx: this.idx,
             line: this.line,
             contig: this.contig,
-            startBp: this.startBp.bp,
-            endBp: this.endBp.bp,
+            startBp: this.startBp.toJSON(),
+            endBp: this.endBp.toJSON(),
             color: this.color,
         }
     }
     static fromJSON(c: {
+        idx:number;
         line: string
         contig: string
         startBp: number
         endBp: number
         color: string
     }){
-        let k = new Contig(c.line, c.contig, c.startBp, c.endBp);
+        let k = new Contig(c.idx,c.line, c.contig, c.startBp, c.endBp);
         k.color = c.color
         return k
     }
@@ -58,8 +69,10 @@ export class Contig{
 export type Adjacency = Map<[Contig,Contig],Link | null>
 
 export class Link{
-    fromLine: Contig;
-    constructor(fromLine: Contig, toLine: Contig, from: [number, number], to: [number, number],percentIdy: number) {
+    id: number;
+    fromLine: number;
+    constructor(id:number,fromLine: number, toLine: number, from: [number, number], to: [number, number],percentIdy: number) {
+        this.id = id;
         this.fromLine = fromLine;
         this.toLine = toLine;
         this.from = [new BpPos(from[0]),new BpPos(from[1])];
@@ -67,40 +80,30 @@ export class Link{
         this.percentIdy = percentIdy
     }
 
-    toLine: Contig;
+    toLine: number;
     from:[BpPos,BpPos];
     to:[BpPos,BpPos]
     percentIdy:number;
     get T(): Link {
-        return new Link(this.toLine, this.fromLine, [this.to[0].bp, this.to[1].bp], [this.from[0].bp, this.from[1].bp], this.percentIdy);
+        return new Link(-this.id,this.toLine, this.fromLine, [this.to[0].bp, this.to[1].bp], [this.from[0].bp, this.from[1].bp], this.percentIdy);
     }
     static fromJSON(l: {
-        fromLine : {
-            line: string
-            contig: string
-            startBp: number
-            endBp: number
-            color: string
-        },
-        toLine: {
-            line: string
-            contig: string
-            startBp: number
-            endBp: number
-            color: string
-        },
+        id: number;
+        fromLine : number,
+        toLine: number,
         from: [number,number],
         to: [number, number],
         percentIdy: number
     }){
-        return new Link(Contig.fromJSON(l.fromLine),Contig.fromJSON(l.toLine),[l.from[0],l.from[1]],[l.to[0],l.to[1]],l.percentIdy)
+        return new Link(l.id,l.fromLine,l.toLine,[l.from[0],l.from[1]],[l.to[0],l.to[1]],l.percentIdy)
     }
     toJSON(){
         return {
-            fromLine : this.fromLine.toJSON(),
-            toLine: this.toLine.toJSON(),
-            from: [this.from[0].bp, this.from[1].bp],
-            to: [this.to[0].bp, this.to[1].bp],
+            id: this.id,
+            fromLine : this.fromLine,
+            toLine: this.toLine,
+            from: [this.from[0].toJSON(), this.from[1].toJSON()],
+            to: [this.to[0].toJSON(), this.to[1].toJSON()],
             percentIdy: this.percentIdy
         }
     }
@@ -110,22 +113,50 @@ export class SynBlock {
     get length(): BpPos {
         return new BpPos(this.endBp.bp - this.startBp.bp);
     }
-
-    line: string;
-    contig: string;
+    id: number;
+    line: number;
     startBp: BpPos;
     endBp: BpPos;
     tag: string;
-
-    constructor(line: string, contig: string, startPos: number, endPos: number,tag: string) {
+    originBlock?: number
+    originLink?: number
+    originContig?: number
+    constructor(id: number,line: number, startPos: number, endPos: number,tag: string) {
+        this.id = id;
         this.line = line;
-        this.contig = contig;
         this.startBp = new BpPos( startPos);
         this.endBp = new BpPos( endPos);
         this.tag = tag;
     }
     toString() {
-        return `${this.line}.${this.contig}.${this.startBp}-${this.endBp}`;
+        return `${this.line}.${this.startBp}-${this.endBp}`;
+    }
+    toJSON(){
+        return {
+            id: this.id,
+            line: this.line,
+            startBp: this.startBp.toJSON(),
+            endBp: this.endBp.toJSON(),
+            tag: this.tag,
+            originBlock: this?.originBlock,
+            originLink: this?.originLink,
+            originContig: this?.originContig,
+        }
+    }
+    static fromJSON(sb: {
+        id: number;
+        line: number;
+                 startBp: number;
+                 endBp: number;
+                 tag: string;
+                 originBlock?: number;
+                 originContig?: number;
+    originLink?: number}){
+        let b = new SynBlock(sb.id,sb.line,sb.startBp,sb.endBp,sb.tag);
+        b.originBlock = sb.originBlock;
+        b.originLink = sb.originLink;
+        b.originContig = sb.originContig;
+        return b;
     }
 }
 
