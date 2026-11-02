@@ -5,6 +5,8 @@ import Konva from 'konva';
 import {Contig, Link, SynBlock} from "~/data/SynBlock";
 import {getColor, getVerticalRibbonPath} from "~/data/utils";
 import {RightAlignedLabel} from "~/components/RightAlignedLabel";
+import {Tooltip} from "~/components/ToolTip";
+import type {KonvaEventObject} from "konva/lib/Node";
 
 interface GenomicFeature {
     id: string;
@@ -26,6 +28,12 @@ interface GenomeBrowserProps {
     contigList: Contig[];
 }
 
+interface TooltipData {
+    x: number;
+    y: number;
+    content: string;
+}
+
 const DEFAULT_FEATURES: GenomicFeature[] = [
     { id: '1', name: 'Gene Cluster A', startKbp: 4000, endKbp: 11000, color: '#4F46E5' }, // 4Mb - 11Mb
     { id: '2', name: 'Structural Variant Region', startKbp: 18000, endKbp: 28000, color: '#10B981' }, // 18Mb - 28Mb
@@ -42,6 +50,19 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
 }) => {
     const [kbpPerPx, setKbpPerPx] = useState<number>(initialKbpPerPx);
     const [stageX, setStageX] = useState<number>(0);
+    const [blockInFocus, setBlockInFocus] = useState<SynBlock | null>(null);
+
+    const [tooltip, setTooltip] = useState<TooltipData | null>(null);
+    // Position bubble safely ABOVE the clicked rectangle to prevent covering it
+    const handleRectClick = (posX: number, posY: number,block: SynBlock) => {
+        if(blockInFocus === block) return;
+        setBlockInFocus(block);
+        setTooltip({
+            x: posX,
+            y: posY - 52, // 52px gap above the rect (bubble height is 40px, leaves a clean 12px margin)
+            content: `${block.line}:${block.startBp.bp}-${block.endBp.bp}`,
+        });
+    };
 
     const marginX = 60;
     const scaleY = 60;
@@ -153,6 +174,10 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                 width={width}
                 height={height}
                 onWheel={handleWheel}
+                onClick={()=>{
+                    setTooltip(null)
+                    setBlockInFocus(null)
+                }}
                 style={{ background: '#F9FAFB', borderRadius: '6px', overflow: 'hidden', cursor: 'grab' }}
             >
                 <Layer>
@@ -198,7 +223,7 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                 const featureWidth = (feature.endBp.kBp - feature.startBp.kBp) / kbpPerPx;
                                 const featureY = scaleY + 35 + idx * YSpacing;
                                 const nextFeatureY = scaleY + 35 + (idx+1) * YSpacing;
-                                console.log(blocks)
+                                //console.log(blocks)
                                 return (
                                     <Group key={idx}>
                                         <Rect
@@ -221,17 +246,32 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                         {
 
 
-                                            blocks[idx]?.map((b,bid)=>(
+                                            blocks[idx]?.map((b,bid)=>{
+                                                const x = featureX+ b.startBp.kBp / kbpPerPx
+                                                const y= featureY
+                                                return (
                                                 <Rect
+                                                    key={`block-${b.id}`}
+                                                    x={x}
+                                                    y={y}
+                                                    // Bright outer border when focused, hidden otherwise
+                                                    stroke={blockInFocus === b ? '#ffffff' : 'transparent'}
+                                                    strokeWidth={blockInFocus === b ? 3 : 0}
 
-                                                    x={featureX+ b.startBp.kBp / kbpPerPx}
-                                                    y={featureY}
+                                                    // Enhanced shadow glow when focused
+                                                    shadowColor={blockInFocus === b ? '#2563eb' : '#000000'}
+                                                    shadowBlur={blockInFocus === b ? 16 : 6}
+                                                    shadowOpacity={blockInFocus === b ? 0.6 : 0.15}
+                                                    shadowOffsetY={blockInFocus === b ? 4 : 2}
                                                     width={(b.endBp.kBp - b.startBp.kBp) / kbpPerPx}
                                                     height={26}
                                                     fill={getColor(b,contigList,feature,'#000000')}
                                                     cornerRadius={4}
+                                                    onClick={(e)=>{
+                                                        e.cancelBubble = true;
+                                                        handleRectClick(x,y,b)}}
                                                 />
-                                            ))
+                                            )})
                                         }
                                     </Group>
                                 );
@@ -293,6 +333,14 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                             );
                         })}
                     </Group>
+                    {/* --- 5. Pop-out Info Bubble Component --- */}
+                    {tooltip && (
+                        <Tooltip
+                            x={tooltip.x}
+                            y={tooltip.y}
+                            content={tooltip.content}
+                        />
+                    )}
                 </Layer>
             </Stage>
         </div>
