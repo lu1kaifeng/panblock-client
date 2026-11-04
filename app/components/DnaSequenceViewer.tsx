@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, {useState, useCallback, useMemo, useEffect} from 'react';
 import {Stage, Layer, Line, Text, Rect, Group, Path} from 'react-konva';
 import { ZoomIn, ZoomOut, RotateCcw, MoveHorizontal } from 'lucide-react';
 import Konva from 'konva';
@@ -7,6 +7,8 @@ import {getColor, getVerticalRibbonPath} from "~/data/utils";
 import {RightAlignedLabel} from "~/components/RightAlignedLabel";
 import {Tooltip} from "~/components/ToolTip";
 import type {KonvaEventObject} from "konva/lib/Node";
+import type {IDBPDatabase, IDBPTransaction} from "idb";
+import type {PanblockDB} from "~/data/db";
 
 interface GenomicFeature {
     id: string;
@@ -26,6 +28,7 @@ interface GenomeBrowserProps {
     links: Link[][];
     blocks: SynBlock[][];
     contigList: Contig[];
+    //db?: IDBPDatabase<PanblockDB>
 }
 
 interface TooltipData {
@@ -55,6 +58,8 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
     const [tooltip, setTooltip] = useState<TooltipData | null>(null);
     // Position bubble safely ABOVE the clicked rectangle to prevent covering it
     const handleRectClick = (posX: number, posY: number,block: SynBlock) => {
+        setTooltip(null)
+        setBlockInFocus(null)
         if(blockInFocus === block) return;
         setBlockInFocus(block);
         setTooltip({
@@ -63,6 +68,31 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
             content: `${block.line}:${block.startBp.bp}-${block.endBp.bp}`,
         });
     };
+
+    useEffect(() => {
+        (async ()=>{
+            //if(db && blockInFocus) {
+                //const tx = db.transaction(["links",'blocks'], "readonly");
+                //console.log(traverse(tx,blockInFocus,new Set()))
+            //}
+
+            /*if(db && blockInFocus){
+                const tx = db.transaction(["links",'blocks'], "readonly");
+
+                const blockSet = new Set()
+                const links = await tx.objectStore("links").index("from_line_and_bp").getAll(IDBKeyRange.bound([blockInFocus?.line,blockInFocus?.startBp.bp,blockInFocus?.endBp.bp],[blockInFocus?.line,blockInFocus?.startBp.bp,blockInFocus?.endBp.bp]));
+                const coFocusBlock = new Set(links.map(l => [[l.fromLine,l.fromBpIdx,l.fromBpIdx1],[l.toLine,l.toBpIdx,l.toBpIdx1]]).flat().map(l=>JSON.stringify(l)))
+                    for (const b of coFocusBlock) {
+                        let cond:[number,number,number] = JSON.parse(b)
+                        let block = (await tx.objectStore('blocks').index('all').getAll(IDBKeyRange.only(cond)))[0]
+                        blockSet.add(block.id)
+                    }
+                blockSet.delete(blockInFocus?.id)
+                console.log(blockSet)
+            }*/
+
+        })()
+    }, [blockInFocus]);
 
     const marginX = 60;
     const scaleY = 60;
@@ -332,15 +362,16 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                 </Group>
                             );
                         })}
+                        {/* --- 5. Pop-out Info Bubble Component --- */}
+                        {tooltip && (
+                            <Tooltip
+                                x={tooltip.x}
+                                y={tooltip.y}
+                                content={tooltip.content}
+                            />
+                        )}
                     </Group>
-                    {/* --- 5. Pop-out Info Bubble Component --- */}
-                    {tooltip && (
-                        <Tooltip
-                            x={tooltip.x}
-                            y={tooltip.y}
-                            content={tooltip.content}
-                        />
-                    )}
+
                 </Layer>
             </Stage>
         </div>

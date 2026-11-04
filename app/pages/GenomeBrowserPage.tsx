@@ -32,7 +32,7 @@ export const GenomeBrowserPage: React.FC = () => {
     const [visualLoading, setVisualLoading] = useState<boolean>(true);
     const [statLoading, setStatLoading] = useState<boolean>(true);
     const [pieChartItems, setPieChartItems] = useState<PieChartItem[]>([]);
-    //const [db,setDb] = useState<IDBPDatabase<PanblockDB> | undefined>(undefined)
+    const [db,setDb] = useState<IDBPDatabase<PanblockDB> | undefined>(undefined)
     useEffect(()=>{
         (async()=>{
             setVisualLoading(true);
@@ -54,9 +54,10 @@ export const GenomeBrowserPage: React.FC = () => {
                 }
                 setLinks(l)
                 setBlocks(b)
+                //if(db) db.close()
+                //await saveToDb(l,b,enabled_samples.map(s=>s.contig))
+
                 setVisualLoading(false);
-                //const db = await saveToDb(links,blocks,enabled_samples.map(s=>s.contig))
-                //setDb(db)
                 setPieChartItems(enabled_samples.map((s,idx)=>({
                     color:s.contig.color,
                     value:b[idx]?.reduce((acc,cur)=>acc+(cur.originContig ? 0: 1),0) || 0 + b.flat().reduce((acc,cur)=>acc+(cur.originContig == s.contig.idx? 1: 0),0),

@@ -71,6 +71,10 @@ export type Adjacency = Map<[Contig,Contig],Link | null>
 export class Link{
     id: number;
     fromLine: number;
+    fromBpIdx: number;
+    toBpIdx: number;
+    fromBpIdx1: number;
+    toBpIdx1: number;
     constructor(id:number,fromLine: number, toLine: number, from: [number, number], to: [number, number],percentIdy: number) {
         this.id = id;
         this.fromLine = fromLine;
@@ -78,6 +82,10 @@ export class Link{
         this.from = [new BpPos(from[0]),new BpPos(from[1])];
         this.to =  [new BpPos(to[0]),new BpPos(to[1])];
         this.percentIdy = percentIdy
+        this.fromBpIdx = from[0]
+        this.toBpIdx = to[0]
+        this.fromBpIdx1 = from[1]
+        this.toBpIdx1 = to[1]
     }
 
     toLine: number;
