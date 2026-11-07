@@ -8,7 +8,7 @@ const chunkRegistry = import.meta.glob('./chunks/*.json')
 export type ViteJsonModuleLoader = () => Promise<{ default: any[] }>;
 
 export async function loadLoadLinksBetween(c1: Contig, c2: Contig) {
-    const jsonPath= `./chunks/${c1.idx}-${c2.idx}.json`
+    const jsonPath= `./chunks/${c1.idx}-${c2.idx}-links.json`
     if(jsonPath in chunkRegistry){
         return (await (chunkRegistry[jsonPath] as unknown as ViteJsonModuleLoader)()).default.map(l=>Link.fromJSON(l))
     }

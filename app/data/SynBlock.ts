@@ -75,7 +75,10 @@ export class Link{
     toBpIdx: number;
     fromBpIdx1: number;
     toBpIdx1: number;
-    constructor(id:number,fromLine: number, toLine: number, from: [number, number], to: [number, number],percentIdy: number) {
+    fromBlock: number;
+    toBlock:number;
+    constructor(id:number,fromLine: number, toLine: number, from: [number, number], to: [number, number],percentIdy: number,fromBlock: number,
+    toBlock:number) {
         this.id = id;
         this.fromLine = fromLine;
         this.toLine = toLine;
@@ -86,6 +89,8 @@ export class Link{
         this.toBpIdx = to[0]
         this.fromBpIdx1 = from[1]
         this.toBpIdx1 = to[1]
+        this.fromBlock = fromBlock
+        this.toBlock = toBlock
     }
 
     toLine: number;
@@ -93,7 +98,7 @@ export class Link{
     to:[BpPos,BpPos]
     percentIdy:number;
     get T(): Link {
-        return new Link(-this.id,this.toLine, this.fromLine, [this.to[0].bp, this.to[1].bp], [this.from[0].bp, this.from[1].bp], this.percentIdy);
+        return new Link(-this.id,this.toLine, this.fromLine, [this.to[0].bp, this.to[1].bp], [this.from[0].bp, this.from[1].bp], this.percentIdy,this.toBlock,this.fromBlock);
     }
     static fromJSON(l: {
         id: number;
@@ -101,9 +106,10 @@ export class Link{
         toLine: number,
         from: [number,number],
         to: [number, number],
-        percentIdy: number
+        percentIdy: number,fromBlock: number,
+        toBlock:number
     }){
-        return new Link(l.id,l.fromLine,l.toLine,[l.from[0],l.from[1]],[l.to[0],l.to[1]],l.percentIdy)
+        return new Link(l.id,l.fromLine,l.toLine,[l.from[0],l.from[1]],[l.to[0],l.to[1]],l.percentIdy,l.fromBlock,l.toBlock)
     }
     toJSON(){
         return {
@@ -112,7 +118,7 @@ export class Link{
             toLine: this.toLine,
             from: [this.from[0].toJSON(), this.from[1].toJSON()],
             to: [this.to[0].toJSON(), this.to[1].toJSON()],
-            percentIdy: this.percentIdy
+            percentIdy: this.percentIdy,fromBlock: this.fromBlock,toBlock:this.toBlock
         }
     }
 }

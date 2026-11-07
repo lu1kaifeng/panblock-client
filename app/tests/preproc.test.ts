@@ -21,7 +21,7 @@ describe('Data Preprocessing Pipeline', () => {
         // 2. Dynamically import AFTER globalThis.compileTime is guaranteed to exist
         const module = await import('~/data/preproc.compile');
         sampleData = module.sampleData;
-    });
+    },0);
 
     it('should piss and fart', () => {
         //execSync('npm run build', { stdio: 'pipe' })
