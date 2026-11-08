@@ -2,7 +2,7 @@ import React, {useState, useCallback, useMemo, useEffect} from 'react';
 import {Stage, Layer, Line, Text, Rect, Group, Path} from 'react-konva';
 import { ZoomIn, ZoomOut, RotateCcw, MoveHorizontal } from 'lucide-react';
 import Konva from 'konva';
-import {Contig, Link, SynBlock} from "~/data/SynBlock";
+import {Contig, Link, SynBlock, Tracer} from "~/data/SynBlock";
 import {getColor, getVerticalRibbonPath} from "~/data/utils";
 import {RightAlignedLabel} from "~/components/RightAlignedLabel";
 import {Tooltip} from "~/components/ToolTip";
@@ -27,6 +27,7 @@ interface GenomeBrowserProps {
     contigs: Contig[];
     links: Link[][];
     blocks: SynBlock[][];
+    tracers: Tracer[];
     contigList: Contig[];
     //db?: IDBPDatabase<PanblockDB>
 }
@@ -49,12 +50,11 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                                                 width = 800,
                                                                 height = 380,
                                                                 initialKbpPerPx = 70, // Default zoom: 1 px = 70 kb (~50 Mb fits across ~714px)
-                                                                             contigs = [],links = [],blocks = [],contigList
+                                                                             contigs = [],links = [],blocks = [],tracers = [],contigList
 }) => {
     const [kbpPerPx, setKbpPerPx] = useState<number>(initialKbpPerPx);
     const [stageX, setStageX] = useState<number>(0);
     const [blockInFocus, setBlockInFocus] = useState<SynBlock | null>(null);
-
     const [tooltip, setTooltip] = useState<TooltipData | null>(null);
     // Position bubble safely ABOVE the clicked rectangle to prevent covering it
     const handleRectClick = (posX: number, posY: number,block: SynBlock) => {
@@ -65,34 +65,33 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
         setTooltip({
             x: posX,
             y: posY - 52, // 52px gap above the rect (bubble height is 40px, leaves a clean 12px margin)
-            content: `${block.line}:${block.startBp.bp}-${block.endBp.bp}`,
+            content: `${block.line}:${block.startBp.bp}-${block.endBp.bp} id:${block.id}`,
         });
     };
 
-    useEffect(() => {
-        (async ()=>{
-            //if(db && blockInFocus) {
-                //const tx = db.transaction(["links",'blocks'], "readonly");
-                //console.log(traverse(tx,blockInFocus,new Set()))
-            //}
-
-            /*if(db && blockInFocus){
-                const tx = db.transaction(["links",'blocks'], "readonly");
-
-                const blockSet = new Set()
-                const links = await tx.objectStore("links").index("from_line_and_bp").getAll(IDBKeyRange.bound([blockInFocus?.line,blockInFocus?.startBp.bp,blockInFocus?.endBp.bp],[blockInFocus?.line,blockInFocus?.startBp.bp,blockInFocus?.endBp.bp]));
-                const coFocusBlock = new Set(links.map(l => [[l.fromLine,l.fromBpIdx,l.fromBpIdx1],[l.toLine,l.toBpIdx,l.toBpIdx1]]).flat().map(l=>JSON.stringify(l)))
-                    for (const b of coFocusBlock) {
-                        let cond:[number,number,number] = JSON.parse(b)
-                        let block = (await tx.objectStore('blocks').index('all').getAll(IDBKeyRange.only(cond)))[0]
-                        blockSet.add(block.id)
-                    }
-                blockSet.delete(blockInFocus?.id)
-                console.log(blockSet)
-            }*/
-
-        })()
-    }, [blockInFocus]);
+    const { coFocusLinks, coFocusBlocks } = useMemo(() => {
+        if(blockInFocus){
+            //console.log(tracers)
+            let coFocus1 = tracers.flatMap( t=>
+                t.byToBlockId[blockInFocus.id]
+            ).filter(f=>f != undefined)//.map(t=>t[1])
+            //console.log(coFocus1)
+            let coFocus1links = coFocus1.map(c=>c[0])
+            let coFocus1Blocks = coFocus1.map(t=>t[1])
+            let coFocus2 = tracers.flatMap( t=>
+                t.byFromBlockId[blockInFocus.id]
+            ).filter(f=>f != undefined)//.map(t=>t[2])
+            let coFocus2links = coFocus2.map(c=>c[0])
+            let coFocus2Blocks = coFocus2.map(t=>t[2])
+            console.log({coFocusLinks:coFocus1links.concat(coFocus2links),
+                coFocusBlocks: coFocus1Blocks.concat(coFocus2Blocks)})
+            return {coFocusLinks:coFocus1links.concat(coFocus2links),
+            coFocusBlocks: coFocus1Blocks.concat(coFocus2Blocks)}
+        }else{
+            return {coFocusLinks:[],
+                coFocusBlocks: []}
+        }
+    }, [blockInFocus,tracers]);
 
     const marginX = 60;
     const scaleY = 60;
@@ -255,7 +254,7 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                 const nextFeatureY = scaleY + 35 + (idx+1) * YSpacing;
                                 //console.log(blocks)
                                 return (
-                                    <Group key={idx}>
+                                    <Group key={`contig-${idx}`}>
                                         <Rect
                                         x={featureX}
                                         y={featureY}
@@ -279,20 +278,21 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                             blocks[idx]?.map((b,bid)=>{
                                                 const x = featureX+ b.startBp.kBp / kbpPerPx
                                                 const y= featureY
+                                                const coFocus = coFocusBlocks.includes(b.id) || blockInFocus === b
                                                 return (
                                                 <Rect
-                                                    key={`block-${b.id}`}
+                                                    key={`contig-${idx}-block-${bid}`}
                                                     x={x}
                                                     y={y}
                                                     // Bright outer border when focused, hidden otherwise
-                                                    stroke={blockInFocus === b ? '#ffffff' : 'transparent'}
-                                                    strokeWidth={blockInFocus === b ? 3 : 0}
+                                                    stroke={(coFocus ) ? '#ffffff' : 'transparent'}
+                                                    strokeWidth={(coFocus ) ? 3 : 0}
 
                                                     // Enhanced shadow glow when focused
-                                                    shadowColor={blockInFocus === b ? '#2563eb' : '#000000'}
-                                                    shadowBlur={blockInFocus === b ? 16 : 6}
-                                                    shadowOpacity={blockInFocus === b ? 0.6 : 0.15}
-                                                    shadowOffsetY={blockInFocus === b ? 4 : 2}
+                                                    shadowColor={(coFocus ) ? '#2563eb' : '#000000'}
+                                                    shadowBlur={(coFocus ) ? 16 : 6}
+                                                    shadowOpacity={(coFocus ) ? 0.6 : 0.15}
+                                                    shadowOffsetY={(coFocus ) ? 4 : 2}
                                                     width={(b.endBp.kBp - b.startBp.kBp) / kbpPerPx}
                                                     height={26}
                                                     fill={getColor(b,contigList,feature,'#000000')}
@@ -313,11 +313,10 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                             const featureWidth = (feature.endBp.kBp - feature.startBp.kBp) / kbpPerPx;
                             const featureY = scaleY + 35 + idx * YSpacing;
                             const nextFeatureY = scaleY + 35 + (idx+1) * YSpacing;
-
                             return (
                                 <Group key={`${idx}-links`}>
                                     {idx < links.length ? links[idx]?.map((synBlock, i) =>  (<Group
-                                            key={`${synBlock.id}`}
+                                            key={`${idx}-links-${i}`}
                                         >
 
                                             {/*<Rect
@@ -343,7 +342,7 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                         <Path
 
                                             data={getVerticalRibbonPath(featureY+26,featureX+ synBlock.from[0].kBp / kbpPerPx,featureX+ synBlock.from[0].kBp / kbpPerPx + (synBlock.from[1].kBp - synBlock.from[0].kBp) / kbpPerPx,nextFeatureY,featureX+ synBlock.to[0].kBp / kbpPerPx,featureX+ synBlock.to[0].kBp / kbpPerPx + (synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx)}
-                                            fill="rgba(150, 150, 150, 0.25)"
+                                            fill={coFocusLinks.includes(synBlock.id) ? 'rgba(150, 0, 150, 0.25)' : 'rgba(150, 150, 150, 0.25)'}
                                             stroke="rgba(0, 0, 0, 0.05)"
                                             strokeWidth={1}
                                         />

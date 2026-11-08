@@ -130,7 +130,7 @@ export const sampleData = compileTime(() => {
                                                                                    fromBp1, fromBp2, toBp1, toBp2,
                                                                                    percentIdy)
                                          values (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-                stmt.run(linkIdx, to.contig, from.idx, to.idx, l[0], l[1], l[2], l[3], l[6]);
+                stmt.run(linkIdx, to.contig, from.idx, to.idx, l[0] - 1, l[1] -1, l[2]-1, l[3]-1, l[6]);
                 linkIdx += 1
             }
 
@@ -161,6 +161,15 @@ export const sampleData = compileTime(() => {
             }
             fs.writeFileSync(path.join(chunksDir,`${from.idx}-${to.idx}-links.json`),JSON.stringify(lArr),{})
             fs.writeFileSync(path.join(chunksDir,`${to.idx}-${from.idx}-links.json`),JSON.stringify(lArr.map((l)=>l.T)),{})
+            let traceStmt = db.prepare(`select * from '${from.idx}-${to.idx}-trace'`)
+            let tArr :[number,number,number,number][]= []
+            let tTArr :[number,number,number,number][]= []
+            for(let tS of traceStmt.all()) {
+                tArr.push([tS.id as number, tS.from_block_id as number, tS.to_block_id  as number, tS.percentIdy as number])
+                tTArr.push([-(tS.id as number),  tS.to_block_id  as number,tS.from_block_id as number, tS.percentIdy as number])
+            }
+            fs.writeFileSync(path.join(chunksDir,`${from.idx}-${to.idx}-trace.json`),JSON.stringify(tArr),{})
+            fs.writeFileSync(path.join(chunksDir,`${to.idx}-${from.idx}-trace.json`),JSON.stringify(tTArr),{})
         })
     })
     samples.forEach((s,idx) =>{
@@ -173,7 +182,7 @@ export const sampleData = compileTime(() => {
                 bbb.originBlock = lll.originBlockId as number
                 bArr.push(bbb)
             }
-            fs.writeFileSync(path.join(chunksDir,`${s.idx}-blocks`),JSON.stringify(bArr),{})
+            fs.writeFileSync(path.join(chunksDir,`${s.idx}-blocks.json`),JSON.stringify(bArr),{})
         }else{
         let bArr:SynBlock[] = []
         let stmt = db.prepare(`select b.id as id,b.line as line, b.fromBp as fromBp,b.toBp as toBp, b.originContigId as originContigId,from_block_id as originBlockId from '${s.idx}-blocks' b left join '${samples[0].idx}-${s.idx}-trace' t on b.id = to_block_id and not b.originContigId = ${s.idx}`)
@@ -183,7 +192,8 @@ export const sampleData = compileTime(() => {
             bbb.originBlock = lll.originBlockId as number
             bArr.push(bbb)
         }
-            fs.writeFileSync(path.join(chunksDir,`${s.idx}-blocks`),JSON.stringify(bArr),{})
+
+            fs.writeFileSync(path.join(chunksDir,`${s.idx}-blocks.json`),JSON.stringify(bArr),{})
     }
     })
     // for(let sample in sampleBlockRecord){

@@ -2,9 +2,9 @@ import React, {use, useEffect, useState} from 'react';
 import { GenomeBrowser } from '~/components/DnaSequenceViewer';
 // Assumes GenomeBrowser component is in the same directory
 import { Dna, Filter, Layers, Search, Info, Settings, Download } from 'lucide-react';
-import {type Contig, Link, SynBlock} from "~/data/SynBlock";
+import {type Contig, Link, SynBlock, Tracer} from "~/data/SynBlock";
 import {sampleData} from '~/data/preproc.compile'
-import {loadLoadBlocks, loadLoadLinksBetween, Samples} from "~/data/registry";
+import {loadLoadBlocks, loadLoadLinksBetween, loadLoadTraceBetween, Samples} from "~/data/registry";
 import {ContigList} from "~/components/SampleSelector";
 import {vi} from "vitest";
 import {LoadingSpinner} from "~/components/LoadingSpinner";
@@ -29,6 +29,7 @@ export const GenomeBrowserPage: React.FC = () => {
     //const [altLines,setAltLines] = useState<Contig[]>(Samples.filter(s=>s!==refLine));
     const [links, setLinks] = useState<Link[][] >([]);
     const [blocks, setBlocks] = useState<SynBlock[][]>([]);
+    const [tracers, setTracers] = useState<Tracer[]>([]);
     const [visualLoading, setVisualLoading] = useState<boolean>(true);
     const [statLoading, setStatLoading] = useState<boolean>(true);
     const [pieChartItems, setPieChartItems] = useState<PieChartItem[]>([]);
@@ -41,9 +42,11 @@ export const GenomeBrowserPage: React.FC = () => {
                 let i = 0
                 let j = 1
                 let l: Link[][] = []
+                let ttt : Tracer[] = []
                 let enabled_samples = samples.filter(s=>s.enabled)
                 while(enabled_samples.length > j){
                     let blocks = await loadLoadLinksBetween(enabled_samples[i].contig,enabled_samples[j].contig)
+                    ttt.push(await loadLoadTraceBetween(enabled_samples[i].contig,enabled_samples[j].contig))
                     l.push(blocks)
                     i++
                     j++
@@ -54,6 +57,7 @@ export const GenomeBrowserPage: React.FC = () => {
                 }
                 setLinks(l)
                 setBlocks(b)
+                setTracers(ttt)
                 //if(db) db.close()
                 //await saveToDb(l,b,enabled_samples.map(s=>s.contig))
 
@@ -138,7 +142,7 @@ export const GenomeBrowserPage: React.FC = () => {
 
     {/* Integrated Konva Browser */}
     <div style={{ display: 'flex', justifyContent: 'center' }}>
-        {visualLoading? (<LoadingSpinner width={viewerWidth} height={viewerHeight} text={"Track Viewer Loading..."}/>):(<GenomeBrowser totalKbp={50000} width={viewerWidth} height={viewerHeight} contigs={samples.filter(s=>s.enabled).map(s=>s.contig)} links={links} blocks={blocks} contigList={samples.map(s => s.contig)} />)}
+        {visualLoading? (<LoadingSpinner width={viewerWidth} height={viewerHeight} text={"Track Viewer Loading..."}/>):(<GenomeBrowser totalKbp={50000} width={viewerWidth} height={viewerHeight} contigs={samples.filter(s=>s.enabled).map(s=>s.contig)} links={links} blocks={blocks} tracers={tracers} contigList={samples.map(s => s.contig)} />)}
     </div>
     </div>
 

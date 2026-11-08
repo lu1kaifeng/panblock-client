@@ -1,7 +1,7 @@
 import {Contig, type SynBlock} from "~/data/SynBlock";
 
 export function getColor(block: SynBlock,contigList: Contig[],currentContig:Contig,fallback: string): string {
-    if(block.originLink){
+    if(block.originContig != undefined){
         return contigList.filter(contig => contig.idx == block.originContig).at(0)?.color || fallback
     }else{
         return currentContig.color
