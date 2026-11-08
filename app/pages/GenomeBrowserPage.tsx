@@ -23,7 +23,7 @@ interface FeatureFilter {
 export const GenomeBrowserPage: React.FC = () => {
     const [chromosome, setChromosome] = useState<string>('A03');
     const [searchQuery, setSearchQuery] = useState<string>('');
-    const viewerHeight = 350
+    const viewerHeight = 3500
     const viewerWidth = 1180
     const [samples,setSamples] = useState<{contig:Contig,enabled:boolean}[]>(Samples.filter(s=>s.contig == chromosome).map(s=>({contig:s, enabled:true})))
     //const [refLine,setRefLine] = useState<Contig>(samples[0]);

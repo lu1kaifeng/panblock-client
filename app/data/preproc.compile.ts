@@ -19,7 +19,7 @@ export const sampleData = compileTime(() => {
     let samples = samplesRaw.map((sample,idx) =>
         new Contig(idx,sample[0],sample[1],sample[2],sample[3])
     )
-
+    if (fs.readdirSync(path.resolve(__dirname, 'chunks')).length > 0) return { data:samples.map( s => s.toJSON()) }
     let dataMat: Adjacency = new Map()
     let linkIdx = 1
     let blockIdx = 1
@@ -54,7 +54,7 @@ export const sampleData = compileTime(() => {
             )
         `);
 
-        let p = path.resolve(__dirname, `raw/Haps/${from.line}.filtered.bed`)
+        let p = path.resolve(__dirname, `raw/Calculated_Haplotypes/${from.line}.filtered.bed`)
         let blocks = Papa.parse<[string, number, number, string]>(fs.readFileSync(p, 'utf-8'), {
             header: false, skipEmptyLines: true,
             dynamicTyping: true, // Automatically casts numbers/booleans
@@ -72,7 +72,7 @@ export const sampleData = compileTime(() => {
         samples.forEach(to => {
             if (from.contig != to.contig) return;
             if (from.line == to.line) return;
-            let lp = path.resolve(__dirname, `raw/Coords/${from.line}-vs-${to.line}-${from.contig}.coords`)
+            let lp = path.resolve(__dirname, `raw/Alignments/${from.line}/${from.line}_vs_${to.line}.filtered.coords`)
             if (!fs.existsSync(lp)) return;
             let links = Papa.parse<[number, number, number, number, number, number, number, number, number, number, number, string, string]>(fs.readFileSync(lp, 'utf-8'), {
                 header: false, skipEmptyLines: true,
@@ -156,7 +156,8 @@ export const sampleData = compileTime(() => {
             for (let lll of stmt.all()) {
                 const fromBlock = db.prepare(`select fromBp,toBp from "${from.idx}-blocks" where id = ${lll.from_block_id}`).all()[0]
                 const toBlock = db.prepare(`select fromBp,toBp from "${to.idx}-blocks" where id = ${lll.to_block_id}`).all()[0]
-                let l = new Link(lll.id as number,from.idx,to.idx,[fromBlock.fromBp as number,fromBlock.toBp as number],[toBlock.fromBp as number,toBlock.toBp as number],lll.percentIdy as number,lll.from_block_id as number,lll.to_block_id as number)
+                let linkkk = db.prepare(`select * from "${from.idx}-${to.idx}-links" where id = ?`).all(lll.id)[0]
+                let l = new Link(lll.id as number,from.idx,to.idx,[linkkk.fromBp1 as number,linkkk.fromBp2 as number],[linkkk.toBp1 as number,linkkk.toBp2 as number],lll.percentIdy as number,lll.from_block_id as number,lll.to_block_id as number)
                 lArr.push(l)
             }
             fs.writeFileSync(path.join(chunksDir,`${from.idx}-${to.idx}-links.json`),JSON.stringify(lArr),{})
