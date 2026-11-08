@@ -11,6 +11,7 @@ import {LoadingSpinner} from "~/components/LoadingSpinner";
 import {type PanblockDB, saveToDb} from "~/data/db";
 import type {IDBPDatabase} from "idb";
 import {PieChart, type PieChartItem} from "~/components/PieChart";
+import {getStats} from "~/data/utils";
 
 interface FeatureFilter {
     id: string;
@@ -62,11 +63,7 @@ export const GenomeBrowserPage: React.FC = () => {
                 //await saveToDb(l,b,enabled_samples.map(s=>s.contig))
 
                 setVisualLoading(false);
-                setPieChartItems(enabled_samples.map((s,idx)=>({
-                    color:s.contig.color,
-                    value:b[idx]?.reduce((acc,cur)=>acc+(cur.originContig ? 0: 1),0) || 0 + b.flat().reduce((acc,cur)=>acc+(cur.originContig == s.contig.idx? 1: 0),0),
-                    label:s.contig.line
-                } as PieChartItem)).filter(i=>i.value != 0 ))
+                setPieChartItems(getStats(samples,b))
                 setStatLoading(false);
         }
         })()
