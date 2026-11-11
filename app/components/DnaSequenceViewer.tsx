@@ -9,6 +9,7 @@ import {Tooltip} from "~/components/ToolTip";
 import type {KonvaEventObject} from "konva/lib/Node";
 import type {IDBPDatabase, IDBPTransaction} from "idb";
 import type {PanblockDB} from "~/data/db";
+import {ContigLabels} from "~/components/ContigLabels";
 
 interface GenomicFeature {
     id: string;
@@ -94,16 +95,19 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
         }
     }, [blockInFocus,tracers]);
 
-    const marginX = 60;
+    const marginX = 10//60;
     const scaleY = 60;
     const sampleHeight = 26
     const YSpacing = 70
+    const labelWidth = 60
+    useEffect(() => {
+        if(contigs.length == 0){
+            setHeight(()=>sampleHeight+YSpacing+scaleY)
+        }else{
+            setHeight(()=>sampleHeight*contigs.length +YSpacing*contigs.length+scaleY)
+        }
+    }, [contigs]);
 
-    if(contigs.length == 0){
-        setHeight(sampleHeight+YSpacing+scaleY)
-    }else{
-        setHeight(sampleHeight*contigs.length +YSpacing*contigs.length+scaleY)
-    }
 
     const minKbpPerPx = 0.5;  // High zoom-in detail level
     const maxKbpPerPx = 150;  // Wide overview level
@@ -204,10 +208,11 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
           Resolution: <strong>{kbpPerPx.toFixed(1)} kb/px</strong>
         </span>
             </div>
-
+<div style={{display:'flex'}}>
             {/* Canvas Viewport */}
+            <ContigLabels samples={contigs} width={labelWidth} height={height} />
             <Stage
-                width={width}
+                width={width - labelWidth}
                 height={height}
                 onWheel={handleWheel}
                 onClick={()=>{
@@ -270,15 +275,15 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                         fill={'lightgrey'}
                                         cornerRadius={4}
                                     />
-                                        <RightAlignedLabel
+                                        {/*<RightAlignedLabel
                                             x={featureX - 6}
                                             y={featureY + 6}
                                             text={`${feature.line}`}
-                                            /*text={`${feature.line} (${formatLabel(feature.startBp.kBp)} - ${formatLabel(feature.endBp.kBp)})`}*/
+                                            /*text={`${feature.line} (${formatLabel(feature.startBp.kBp)} - ${formatLabel(feature.endBp.kBp)})`}* /
                                             fontSize={11}
                                             fontStyle="bold"
                                             fill="#000000"
-                                        />
+                                        />*/}
                                         {
 
 
@@ -380,6 +385,7 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
 
                 </Layer>
             </Stage>
+</div>
         </div>
     );
 };

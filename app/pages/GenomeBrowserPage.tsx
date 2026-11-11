@@ -12,6 +12,7 @@ import {type PanblockDB, saveToDb} from "~/data/db";
 import type {IDBPDatabase} from "idb";
 import {PieChart, type PieChartItem} from "~/components/PieChart";
 import {getStats} from "~/data/utils";
+import {ContigLabels} from "~/components/ContigLabels";
 
 interface FeatureFilter {
     id: string;
