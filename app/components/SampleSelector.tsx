@@ -29,18 +29,28 @@ export const ContigList: React.FC<ContigListParam> = ({selectedContigs,setSelect
         });
     };
 
+    const displayedContigs = selectedContigs
+        .map((sample, originalIdx) => ({ ...sample, originalIdx }))
+        .sort((a, b) => Number(b.enabled) - Number(a.enabled));
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {selectedContigs.map((sample, idx) => (
+            {displayedContigs.map((sample) => (
                 <div
-                    key={idx}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, idx)}
+                    key={sample.originalIdx}
+                    draggable={sample.enabled}
+                    onDragStart={(e) => handleDragStart(e, sample.originalIdx)}
                     onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, idx)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'grab' }}
+                    onDrop={(e) => handleDrop(e, sample.originalIdx)}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        cursor: 'grab',
+                    }}
                 >
                     <span style={{ color: '#9ca3af', userSelect: 'none' }}>⋮⋮</span>
+
                     <label
                         style={{
                             display: 'flex',
@@ -48,7 +58,7 @@ export const ContigList: React.FC<ContigListParam> = ({selectedContigs,setSelect
                             gap: '10px',
                             cursor: 'pointer',
                             fontSize: '13px',
-                            color: '#374151',
+                            color: sample.enabled ? '#374151' : '#9ca3af',
                         }}
                     >
                         <input
@@ -56,21 +66,49 @@ export const ContigList: React.FC<ContigListParam> = ({selectedContigs,setSelect
                             checked={sample.enabled}
                             onChange={() =>
                                 setSelectedContigs(prev =>
-                                    prev.map((s, i) => (i === idx ? { ...s, enabled: !s.enabled } : s))
+                                    prev.map((s, i) =>
+                                        i === sample.originalIdx
+                                            ? { ...s, enabled: !s.enabled }
+                                            : s
+                                    )
                                 )
                             }
-                            style={{ cursor: 'pointer', accentColor: sample.contig.color }}
+                            style={{
+                                cursor: 'pointer',
+                                accentColor: sample.contig.color,
+                            }}
                         />
+
                         <span
                             style={{
                                 width: '10px',
                                 height: '10px',
+                                boxSizing: 'border-box',
                                 borderRadius: '2px',
-                                backgroundColor: sample.contig.color,
                                 display: 'inline-block',
+                                flexShrink: 0,
+                                border: sample.enabled
+                                    ? '1px solid transparent'
+                                    : '1px solid #9ca3af',
+                                background: sample.enabled
+                                    ? sample.contig.color
+                                    : `linear-gradient(
+                            135deg,
+                            transparent 43%,
+                            #9ca3af 43%,
+                            #9ca3af 57%,
+                            transparent 57%
+                        )`,
                             }}
                         />
-                        {sample.contig.line}
+
+                        <span
+                            style={{
+                                textDecoration: sample.enabled ? 'none' : 'line-through',
+                            }}
+                        >
+                {sample.contig.line}
+            </span>
                     </label>
                 </div>
             ))}

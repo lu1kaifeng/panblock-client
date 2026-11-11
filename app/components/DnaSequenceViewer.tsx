@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useMemo, useEffect} from 'react';
+import React, {useState, useCallback, useMemo, useEffect, type Dispatch} from 'react';
 import {Stage, Layer, Line, Text, Rect, Group, Path} from 'react-konva';
 import { ZoomIn, ZoomOut, RotateCcw, MoveHorizontal } from 'lucide-react';
 import Konva from 'konva';
@@ -23,6 +23,7 @@ interface GenomeBrowserProps {
     features?: GenomicFeature[];
     width?: number;
     height?: number;
+    setHeight: Dispatch<React.SetStateAction<number>>;
     initialKbpPerPx?: number;
     contigs: Contig[];
     links: Link[][];
@@ -50,7 +51,7 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                                                 width = 800,
                                                                 height = 380,
                                                                 initialKbpPerPx = 70, // Default zoom: 1 px = 70 kb (~50 Mb fits across ~714px)
-                                                                             contigs = [],links = [],blocks = [],tracers = [],contigList
+                                                                             contigs = [],links = [],blocks = [],tracers = [],contigList,setHeight
 }) => {
     const [kbpPerPx, setKbpPerPx] = useState<number>(initialKbpPerPx);
     const [stageX, setStageX] = useState<number>(0);
@@ -95,8 +96,14 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
 
     const marginX = 60;
     const scaleY = 60;
-
+    const sampleHeight = 26
     const YSpacing = 70
+
+    if(contigs.length == 0){
+        setHeight(sampleHeight+YSpacing+scaleY)
+    }else{
+        setHeight(sampleHeight*contigs.length +YSpacing*contigs.length+scaleY)
+    }
 
     const minKbpPerPx = 0.5;  // High zoom-in detail level
     const maxKbpPerPx = 150;  // Wide overview level
@@ -259,7 +266,7 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                         x={featureX}
                                         y={featureY}
                                         width={Math.max(3, featureWidth)}
-                                        height={26}
+                                        height={sampleHeight}
                                         fill={'lightgrey'}
                                         cornerRadius={4}
                                     />
@@ -294,7 +301,7 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                                     shadowOpacity={(coFocus ) ? 0.6 : 0.15}
                                                     shadowOffsetY={(coFocus ) ? 4 : 2}
                                                     width={(b.endBp.kBp - b.startBp.kBp) / kbpPerPx}
-                                                    height={26}
+                                                    height={sampleHeight}
                                                     fill={getColor(b,contigList,feature,'#000000')}
                                                     cornerRadius={4}
                                                     onClick={(e)=>{
@@ -341,7 +348,7 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
 
                                         <Path
 
-                                            data={getVerticalRibbonPath(featureY+26,featureX+ synBlock.from[0].kBp / kbpPerPx,featureX+ synBlock.from[0].kBp / kbpPerPx + (synBlock.from[1].kBp - synBlock.from[0].kBp) / kbpPerPx,nextFeatureY,featureX+ synBlock.to[0].kBp / kbpPerPx,featureX+ synBlock.to[0].kBp / kbpPerPx + (synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx)}
+                                            data={getVerticalRibbonPath(featureY+sampleHeight,featureX+ synBlock.from[0].kBp / kbpPerPx,featureX+ synBlock.from[0].kBp / kbpPerPx + (synBlock.from[1].kBp - synBlock.from[0].kBp) / kbpPerPx,nextFeatureY,featureX+ synBlock.to[0].kBp / kbpPerPx,featureX+ synBlock.to[0].kBp / kbpPerPx + (synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx)}
                                             fill={coFocusLinks.includes(synBlock.id) ? 'rgba(150, 0, 150, 0.25)' : 'rgba(150, 150, 150, 0.25)'}
                                             stroke="rgba(0, 0, 0, 0.05)"
                                             strokeWidth={1}
