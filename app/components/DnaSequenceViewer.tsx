@@ -85,8 +85,19 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
             ).filter(f=>f != undefined)//.map(t=>t[2])
             let coFocus2links = coFocus2.map(c=>c[0])
             let coFocus2Blocks = coFocus2.map(t=>t[2])
-            console.log({coFocusLinks:coFocus1links.concat(coFocus2links),
-                coFocusBlocks: coFocus1Blocks.concat(coFocus2Blocks)})
+            /*console.log({coFocusLinks:coFocus1links.concat(coFocus2links),
+                coFocusBlocks: coFocus1Blocks.concat(coFocus2Blocks)})*/
+
+            if(blockInFocus.originBlock != undefined){
+                coFocus1Blocks = coFocus1Blocks.concat(blocks.flatMap(b=>b)
+                    .filter(b=>b.originBlock === blockInFocus.originBlock|| b.id ===blockInFocus.originBlock)
+                    .map(b=>b.id))
+            }else{
+                coFocus1Blocks = coFocus1Blocks.concat(blocks.flatMap(b=>b)
+                    .filter(b=>b.originBlock === blockInFocus.id || b.id === blockInFocus.id)
+                    .map(b=>b.id))
+            }
+
             return {coFocusLinks:coFocus1links.concat(coFocus2links),
             coFocusBlocks: coFocus1Blocks.concat(coFocus2Blocks)}
         }else{
@@ -104,7 +115,7 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
         if(contigs.length == 0){
             setHeight(()=>sampleHeight+YSpacing+scaleY)
         }else{
-            setHeight(()=>sampleHeight*contigs.length +YSpacing*contigs.length+scaleY)
+            setHeight(()=>sampleHeight*contigs.length +YSpacing*contigs.length +scaleY)
         }
     }, [contigs]);
 
@@ -301,14 +312,14 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                                     strokeWidth={(coFocus ) ? 3 : 0}
 
                                                     // Enhanced shadow glow when focused
-                                                    shadowColor={(coFocus ) ? '#2563eb' : '#000000'}
-                                                    shadowBlur={(coFocus ) ? 16 : 6}
-                                                    shadowOpacity={(coFocus ) ? 0.6 : 0.15}
-                                                    shadowOffsetY={(coFocus ) ? 4 : 2}
+                                                    //shadowColor={(coFocus ) ? '#2563eb' : '#000000'}
+                                                    //shadowBlur={(coFocus ) ? 16 : 6}
+                                                    //shadowOpacity={(coFocus ) ? 0.6 : 0.15}
+                                                    //shadowOffsetY={(coFocus ) ? 4 : 2}
                                                     width={(b.endBp.kBp - b.startBp.kBp) / kbpPerPx}
                                                     height={sampleHeight}
                                                     fill={getColor(b,contigList,feature,'#000000')}
-                                                    cornerRadius={4}
+                                                    //cornerRadius={4}
                                                     onClick={(e)=>{
                                                         e.cancelBubble = true;
                                                         handleRectClick(x,y,b)}}

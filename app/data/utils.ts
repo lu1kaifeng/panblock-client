@@ -47,7 +47,7 @@ export function getStats(samples: {contig:Contig,enabled:boolean}[],blocks: SynB
     for(let c in counter){
         if(counter[c] == 0){continue}
         piArr.push({
-            color:samples[c].enabled?samples[c].contig.color:samples[c].contig.color+'C0',
+            color:samples[c].enabled?samples[c].contig.color:samples[c].contig.color+'88',
             value:counter[c],
             label:samples[c].contig.line
         })

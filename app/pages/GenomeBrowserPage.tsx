@@ -79,7 +79,7 @@ export const GenomeBrowserPage: React.FC = () => {
     <Dna size={24} />
     </div>
     <div>
-    <h1 style={{ fontSize: '20px', fontWeight: '700', margin: 0, color: '#111827' }}>Genome Sequence Explorer</h1>
+    <h1 style={{ fontSize: '20px', fontWeight: '700', margin: 0, color: '#111827' }}>Pan-Block Explorer</h1>
     <p style={{ fontSize: '13px', margin: 0, color: '#6B7280' }}>High-resolution chromosome mapping & genomic feature browser</p>
     </div>
     </div>
@@ -106,10 +106,7 @@ export const GenomeBrowserPage: React.FC = () => {
     onChange={(e) => setChromosome(e.target.value)}
     style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #D1D5DB', backgroundColor: '#F9FAFB', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
 >
-    <option value="chr1">Chr 1 (50 Mb Region)</option>
-    <option value="chr2">Chr 2 (48 Mb Region)</option>
-    <option value="chr3">Chr 3 (52 Mb Region)</option>
-    <option value="chrX">Chr X (45 Mb Region)</option>
+    <option value="chr1">A03</option>
     </select>
     </div>
 
