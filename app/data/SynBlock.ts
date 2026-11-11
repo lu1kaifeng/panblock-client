@@ -69,6 +69,11 @@ export class Contig{
 export type Adjacency = Map<[Contig,Contig],Link | null>
 
 export class Link{
+
+    get ifReversed(): boolean{
+        return this.fromBpIdx > this.fromBpIdx1 || this.toBpIdx > this.toBpIdx1
+    }
+
     id: number;
     fromLine: number;
     fromBpIdx: number;

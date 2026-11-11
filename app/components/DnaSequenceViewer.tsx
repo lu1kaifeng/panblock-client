@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useMemo, useEffect, type Dispatch} from 'react';
+import React, {useState, useCallback, useMemo, useEffect, type Dispatch, useRef} from 'react';
 import {Stage, Layer, Line, Text, Rect, Group, Path} from 'react-konva';
 import { ZoomIn, ZoomOut, RotateCcw, MoveHorizontal } from 'lucide-react';
 import Konva from 'konva';
@@ -122,19 +122,74 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
 
     const minKbpPerPx = 0.5;  // High zoom-in detail level
     const maxKbpPerPx = 150;  // Wide overview level
-
+    const viewportWidth = width - labelWidth;
     const totalWidthPx = totalKbp / kbpPerPx;
     const minX = Math.min(0, width - (totalWidthPx + marginX * 2));
     const maxX = 0;
 
-    const clampX = (newX: number) => Math.max(minX, Math.min(maxX, newX));
+    const clampX = (x: number, resolution = kbpPerPx) => {
+        const contentWidth = totalKbp / resolution + marginX * 2;
+        const minX = Math.min(0, viewportWidth - contentWidth);
+        return Math.max(minX, Math.min(0, x));
+    };
+    const handleZoom = (zoomFactor: number) => {
+        const nextKbpPerPx = Math.max(
+            minKbpPerPx,
+            Math.min(maxKbpPerPx, kbpPerPx / zoomFactor),
+        );
 
-    const handleZoom = useCallback((zoomFactor: number) => {
-        setKbpPerPx((prev) => {
-            const next = prev / zoomFactor;
-            return Math.max(minKbpPerPx, Math.min(maxKbpPerPx, next));
-        });
-    }, []);
+        let nextStageX = stageX;
+
+        if (blockInFocus) {
+            const rowIndex = blocks.findIndex((row) => row?.includes(blockInFocus));
+            const contig = contigs[rowIndex];
+
+            if (contig) {
+                const startKbp = contig.startBp.kBp + blockInFocus.startBp.kBp;
+                const widthKbp = blockInFocus.endBp.kBp - blockInFocus.startBp.kBp;
+                const midpointX = marginX + (startKbp + widthKbp / 2) / nextKbpPerPx;
+
+                nextStageX = viewportWidth / 2 - midpointX;
+
+                setTooltip((prev) =>
+                    prev ? { ...prev, x: marginX + startKbp / nextKbpPerPx } : prev,
+                );
+            }
+        }
+
+        setKbpPerPx(nextKbpPerPx);
+        setStageX(clampX(nextStageX, nextKbpPerPx));
+    };
+
+    const previousPinchDistance = useRef<number | null>(null);
+
+    const handleTouchMove = (e: Konva.KonvaEventObject<TouchEvent>) => {
+        const touches = e.evt.touches;
+        if (touches.length !== 2) return;
+
+        if (e.evt.cancelable) e.evt.preventDefault();
+
+        // Pause Konva's one-finger drag while two fingers are on the canvas.
+        const group = e.target.getStage()?.findOne('#genome-pan-group');
+        group?.stopDrag();
+
+        const [first, second] = [touches[0], touches[1]];
+        const distance = Math.hypot(
+            second.clientX - first.clientX,
+            second.clientY - first.clientY,
+        );
+
+        const previousDistance = previousPinchDistance.current;
+        previousPinchDistance.current = distance;
+
+        if (previousDistance !== null && previousDistance > 0 && distance > 0) {
+            handleZoom(distance / previousDistance);
+        }
+    };
+
+    const resetPinch = () => {
+        previousPinchDistance.current = null;
+    };
 
     const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
         e.evt.preventDefault();
@@ -223,14 +278,21 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
             {/* Canvas Viewport */}
             <ContigLabels samples={contigs} width={labelWidth} height={height} />
             <Stage
-                width={width - labelWidth}
+                width={viewportWidth}
                 height={height}
                 onWheel={handleWheel}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={resetPinch}
+                onTouchCancel={resetPinch}
                 onClick={()=>{
                     setTooltip(null)
                     setBlockInFocus(null)
                 }}
-                style={{ background: '#F9FAFB', borderRadius: '6px', overflow: 'hidden', cursor: 'grab' }}
+                onTap={()=>{
+                    setTooltip(null)
+                    setBlockInFocus(null)
+                }}
+                style={{ background: '#F9FAFB', borderRadius: '6px', overflow: 'hidden', cursor: 'grab',touchAction: 'none' }}
             >
                 <Layer>
                     <Group
@@ -323,6 +385,10 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                                     onClick={(e)=>{
                                                         e.cancelBubble = true;
                                                         handleRectClick(x,y,b)}}
+                                                    onTap={(e) => {
+                                                        e.cancelBubble = true;
+                                                        handleRectClick(x, y, b);
+                                                    }}
                                                 />
                                             )})
                                         }
@@ -365,8 +431,8 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                         <Path
 
                                             data={getVerticalRibbonPath(featureY+sampleHeight,featureX+ synBlock.from[0].kBp / kbpPerPx,featureX+ synBlock.from[0].kBp / kbpPerPx + (synBlock.from[1].kBp - synBlock.from[0].kBp) / kbpPerPx,nextFeatureY,featureX+ synBlock.to[0].kBp / kbpPerPx,featureX+ synBlock.to[0].kBp / kbpPerPx + (synBlock.to[1].kBp - synBlock.to[0].kBp) / kbpPerPx)}
-                                            fill={coFocusLinks.includes(synBlock.id) ? 'rgba(150, 0, 150, 0.25)' : 'rgba(150, 150, 150, 0.25)'}
-                                            stroke="rgba(0, 0, 0, 0.05)"
+                                            fill={coFocusLinks.includes(synBlock.id) ? 'rgba(218, 224, 72, 0.25)' : !synBlock.ifReversed?'rgba(150, 150, 150, 0.25)':'rgba(72, 192, 114,0.25)'}
+                                            stroke={coFocusLinks.includes(synBlock.id) ? 'rgba(218, 224, 72, 0.25)' : !synBlock.ifReversed?'rgba(150, 150, 150, 0.25)':'rgba(72, 192, 114,0.25)'}
                                             strokeWidth={1}
                                         />
                                             {/*<Rect
