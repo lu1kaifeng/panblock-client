@@ -1,4 +1,4 @@
-import React, {use, useEffect, useState} from 'react';
+import React, {use, useEffect, useRef, useState} from 'react';
 import { GenomeBrowser } from '~/components/DnaSequenceViewer';
 // Assumes GenomeBrowser component is in the same directory
 import { Dna, Filter, Layers, Search, Info, Settings, Download } from 'lucide-react';
@@ -25,7 +25,20 @@ export const GenomeBrowserPage: React.FC = () => {
     const [chromosome, setChromosome] = useState<string>('A03');
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [viewerHeight,setViewerHeight] = useState(0);
-    const viewerWidth = 1180
+    const viewerRef = useRef<HTMLDivElement>(null);
+    const [viewerWidth, setViewerWidth] = useState(0);
+    //const viewerWidth = 1180
+    useEffect(() => {
+        const wrapper = viewerRef.current;
+        if (!wrapper) return;
+
+        const observer = new ResizeObserver(([entry]) => {
+            setViewerWidth(Math.min(1180, Math.floor(entry.contentRect.width)));
+        });
+
+        observer.observe(wrapper);
+        return () => observer.disconnect();
+    }, []);
     const [samples,setSamples] = useState<{contig:Contig,enabled:boolean}[]>(Samples.filter(s=>s.contig == chromosome).map((s,idx)=>({contig:s, enabled:!idx})))
     //const [refLine,setRefLine] = useState<Contig>(samples[0]);
     //const [altLines,setAltLines] = useState<Contig[]>(Samples.filter(s=>s!==refLine));
@@ -136,7 +149,7 @@ export const GenomeBrowserPage: React.FC = () => {
     </div>
 
     {/* Integrated Konva Browser */}
-    <div style={{ display: 'flex', justifyContent: 'center' }}>
+    <div ref={viewerRef} style={{ display: 'flex', justifyContent: 'center' }}>
         {visualLoading? (<LoadingSpinner width={viewerWidth} height={viewerHeight} text={"Track Viewer Loading..."}/>):(<GenomeBrowser totalKbp={50000} width={viewerWidth} height={viewerHeight} setHeight={setViewerHeight} contigs={samples.filter(s=>s.enabled).map(s=>s.contig)} links={links} blocks={blocks} tracers={tracers} contigList={samples.map(s => s.contig)} />)}
     </div>
     </div>
