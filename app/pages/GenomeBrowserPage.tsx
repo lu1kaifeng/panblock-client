@@ -13,6 +13,9 @@ import type {IDBPDatabase} from "idb";
 import {PieChart, type PieChartItem} from "~/components/PieChart";
 import {getStats} from "~/data/utils";
 import {ContigLabels} from "~/components/ContigLabels";
+import {useStore} from "react-redux";
+import FocusSlice, {setContigs} from "~/store/slices/focusSlice";
+import type {AppStore} from "~/store";
 
 interface FeatureFilter {
     id: string;
@@ -49,6 +52,7 @@ export const GenomeBrowserPage: React.FC = () => {
     const [statLoading, setStatLoading] = useState<boolean>(true);
     const [pieChartItems, setPieChartItems] = useState<PieChartItem[]>([]);
     const [db,setDb] = useState<IDBPDatabase<PanblockDB> | undefined>(undefined)
+    const store = useStore<AppStore>()
     useEffect(()=>{
         (async()=>{
             setVisualLoading(true);
@@ -75,7 +79,7 @@ export const GenomeBrowserPage: React.FC = () => {
                 setTracers(ttt)
                 //if(db) db.close()
                 //await saveToDb(l,b,enabled_samples.map(s=>s.contig))
-
+                store.dispatch(setContigs(samples.map(s=>s.contig)))
                 setVisualLoading(false);
                 setPieChartItems(getStats(samples,b))
                 setStatLoading(false);

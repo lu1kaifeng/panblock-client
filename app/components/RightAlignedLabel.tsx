@@ -3,24 +3,26 @@ import { Text } from 'react-konva';
 
 interface RightAlignedLabelProps {
     text: string;
+    subText?: string;
     x: number;
     y: number;
-    fontSize?: number;
-    fontStyle?: string;
-    fill?: string;
 }
 
 export const RightAlignedLabel: React.FC<RightAlignedLabelProps> = ({
                                                                         text,
+    subText,
                                                                         x,
                                                                         y,
-                                                                        fontSize = 16,
-    fontStyle = 'normal',
-                                                                        fill = '#1f2937',
+
                                                                     }) => {
     const textRef = useRef<any>(null);
     const [width, setWidth] = useState<number>(0);
 
+    const fontSize = 11
+    const fontStyle = 'normal'
+    const fill = '#111827'
+    const subFontSize = fontSize - 8
+    const subY = y + fontSize
     // Automatically measures the width on mount, handling any text length effortlessly
     useLayoutEffect(() => {
         if (textRef.current) {
@@ -29,16 +31,20 @@ export const RightAlignedLabel: React.FC<RightAlignedLabelProps> = ({
     }, [text]);
 
     return (
-        <Text
-            ref={textRef}
-            text={text}
-            x={x}
-            y={y}
-            offsetX={width} // Automatically shifts the text box left by its exact measured width
-            fontSize={fontSize}
-            fontStyle={fontStyle}
-            fill={fill}
+        <React.Fragment>
+            <Text
+                ref={textRef}
+                text={text}
+                x={x}
+                y={y - 2}
+                offsetX={width} // Automatically shifts the text box left by its exact measured width
+                fontSize={fontSize}
+                fontStyle={fontStyle}
+                fill={fill}
 
-        />
+            />
+            {subText != undefined && (<Text offsetX={width} x={x} y={subY} fontSize={fontSize - 4} text={subText} fill={'#6B7280'}/>)}
+        </React.Fragment>
+
     );
 };

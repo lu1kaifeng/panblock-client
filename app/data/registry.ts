@@ -39,3 +39,13 @@ export async function loadLoadBlocks(c: Contig) {
     }
 
 }
+export async function loadBlocksByContigIdx(c: number) {
+    const jsonPath= `./chunks/${c}-blocks.json`
+    if(jsonPath in chunkRegistry){
+        return (await (chunkRegistry[jsonPath] as unknown as ViteJsonModuleLoader)()).default.map(l=>SynBlock.fromJSON(l))
+    }
+    else{
+        return Promise.resolve([])
+    }
+
+}

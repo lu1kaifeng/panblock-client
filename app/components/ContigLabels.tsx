@@ -25,9 +25,7 @@ export const ContigLabels: React.FC<ContigLabelsProps>=({samples,width,height})=
                     x={width - 6}
                     y={scaleY + 35 + idx * YSpacing + 6}
                     text={feature.line}
-                    fontSize={11}
-                    fontStyle="bold"
-                    fill="#000000"
+                    subText={`${feature.endBp.Mbp.toFixed(2)}Mbp`}
                 />
             ))}
         </Layer>

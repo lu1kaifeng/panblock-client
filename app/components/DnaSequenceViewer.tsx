@@ -10,7 +10,9 @@ import type {KonvaEventObject} from "konva/lib/Node";
 import type {IDBPDatabase, IDBPTransaction} from "idb";
 import type {PanblockDB} from "~/data/db";
 import {ContigLabels} from "~/components/ContigLabels";
-
+import {useHref, useNavigate} from "react-router";
+import {openBlockPopup} from "~/pages/BlockDetailDialog";
+import {Samples} from "~/data/registry";
 interface GenomicFeature {
     id: string;
     name: string;
@@ -40,6 +42,41 @@ interface TooltipData {
     content: string;
 }
 
+export function trace(tracers: Tracer[],blocks: SynBlock[][],blockInFocus: SynBlock|null){
+    if(blockInFocus){
+        //console.log(tracers)
+        let coFocus1 = tracers.flatMap( t=>
+            t.byToBlockId[blockInFocus.id]
+        ).filter(f=>f != undefined)//.map(t=>t[1])
+        //console.log(coFocus1)
+        let coFocus1links = coFocus1.map(c=>c[0])
+        let coFocus1Blocks = coFocus1.map(t=>t[1])
+        let coFocus2 = tracers.flatMap( t=>
+            t.byFromBlockId[blockInFocus.id]
+        ).filter(f=>f != undefined)//.map(t=>t[2])
+        let coFocus2links = coFocus2.map(c=>c[0])
+        let coFocus2Blocks = coFocus2.map(t=>t[2])
+        /*console.log({coFocusLinks:coFocus1links.concat(coFocus2links),
+            coFocusBlocks: coFocus1Blocks.concat(coFocus2Blocks)})*/
+
+        if(blockInFocus.originBlock != undefined){
+            coFocus1Blocks = coFocus1Blocks.concat(blocks.flatMap(b=>b)
+                .filter(b=>b.originBlock === blockInFocus.originBlock|| b.id ===blockInFocus.originBlock)
+                .map(b=>b.id))
+        }else{
+            coFocus1Blocks = coFocus1Blocks.concat(blocks.flatMap(b=>b)
+                .filter(b=>b.originBlock === blockInFocus.id || b.id === blockInFocus.id)
+                .map(b=>b.id))
+        }
+
+        return {coFocusLinks:coFocus1links.concat(coFocus2links),
+            coFocusBlocks: coFocus1Blocks.concat(coFocus2Blocks)}
+    }else{
+        return {coFocusLinks:[],
+            coFocusBlocks: []}
+    }
+}
+
 const DEFAULT_FEATURES: GenomicFeature[] = [
     { id: '1', name: 'Gene Cluster A', startKbp: 4000, endKbp: 11000, color: '#4F46E5' }, // 4Mb - 11Mb
     { id: '2', name: 'Structural Variant Region', startKbp: 18000, endKbp: 28000, color: '#10B981' }, // 18Mb - 28Mb
@@ -58,6 +95,7 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
     const [stageX, setStageX] = useState<number>(0);
     const [blockInFocus, setBlockInFocus] = useState<SynBlock | null>(null);
     const [tooltip, setTooltip] = useState<TooltipData | null>(null);
+    const detailHref = useHref('/detail')
     // Position bubble safely ABOVE the clicked rectangle to prevent covering it
     const handleRectClick = (posX: number, posY: number,block: SynBlock) => {
         setTooltip(null)
@@ -67,44 +105,11 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
         setTooltip({
             x: posX,
             y: posY - 52, // 52px gap above the rect (bubble height is 40px, leaves a clean 12px margin)
-            content: `${block.line}:${block.startBp.bp}-${block.endBp.bp} id:${block.id}`,
+            content: `${Samples.filter(s=>s.idx == block.line)[0]?.line}:${block.startBp.bp}-${block.endBp.bp}`,
         });
     };
-
-    const { coFocusLinks, coFocusBlocks } = useMemo(() => {
-        if(blockInFocus){
-            //console.log(tracers)
-            let coFocus1 = tracers.flatMap( t=>
-                t.byToBlockId[blockInFocus.id]
-            ).filter(f=>f != undefined)//.map(t=>t[1])
-            //console.log(coFocus1)
-            let coFocus1links = coFocus1.map(c=>c[0])
-            let coFocus1Blocks = coFocus1.map(t=>t[1])
-            let coFocus2 = tracers.flatMap( t=>
-                t.byFromBlockId[blockInFocus.id]
-            ).filter(f=>f != undefined)//.map(t=>t[2])
-            let coFocus2links = coFocus2.map(c=>c[0])
-            let coFocus2Blocks = coFocus2.map(t=>t[2])
-            /*console.log({coFocusLinks:coFocus1links.concat(coFocus2links),
-                coFocusBlocks: coFocus1Blocks.concat(coFocus2Blocks)})*/
-
-            if(blockInFocus.originBlock != undefined){
-                coFocus1Blocks = coFocus1Blocks.concat(blocks.flatMap(b=>b)
-                    .filter(b=>b.originBlock === blockInFocus.originBlock|| b.id ===blockInFocus.originBlock)
-                    .map(b=>b.id))
-            }else{
-                coFocus1Blocks = coFocus1Blocks.concat(blocks.flatMap(b=>b)
-                    .filter(b=>b.originBlock === blockInFocus.id || b.id === blockInFocus.id)
-                    .map(b=>b.id))
-            }
-
-            return {coFocusLinks:coFocus1links.concat(coFocus2links),
-            coFocusBlocks: coFocus1Blocks.concat(coFocus2Blocks)}
-        }else{
-            return {coFocusLinks:[],
-                coFocusBlocks: []}
-        }
-    }, [blockInFocus,tracers]);
+    const navigate = useNavigate();
+    const { coFocusLinks, coFocusBlocks } = useMemo(() => trace(tracers,blocks,blockInFocus), [blockInFocus,tracers]);
 
     const marginX = 10//60;
     const scaleY = 60;
@@ -456,6 +461,7 @@ export const GenomeBrowser: React.FC<GenomeBrowserProps> = ({
                                 x={tooltip.x}
                                 y={tooltip.y}
                                 content={tooltip.content}
+                                onViewDetails={()=>openBlockPopup(detailHref,blockInFocus?.id,blockInFocus?.line,contigs.map(c=>c.idx))}
                             />
                         )}
                     </Group>

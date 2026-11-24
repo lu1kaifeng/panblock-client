@@ -54,3 +54,23 @@ export function getStats(samples: {contig:Contig,enabled:boolean}[],blocks: SynB
     }
     return piArr
 }
+
+export function getJaggedEdgePath(
+    x: number,
+    yTop: number,
+    height: number,
+    side: 'left' | 'right'
+): string {
+    const dir = side === 'left' ? -1 : 1;
+    const h1 = height * 0.25;
+    const h2 = height * 0.5;
+    const h3 = height * 0.75;
+
+    return [
+        `M ${x} ${yTop}`,
+        `L ${x + dir * 4} ${yTop + h1}`,
+        `L ${x - dir * 3} ${yTop + h2}`,
+        `L ${x + dir * 4} ${yTop + h3}`,
+        `L ${x} ${yTop + height}`,
+    ].join(' ');
+}

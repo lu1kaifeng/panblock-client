@@ -193,21 +193,21 @@ export class Tracer{
     byFromBlockId: Record<number, RawTrace[]>
     byToBlockId: Record<number, RawTrace[]>
     constructor(raw: RawTrace[]) {
-        this.byId = Tracer.groupBy<RawTrace,number>(raw, (group) => group[0])
-        this.byFromBlockId = Tracer.groupBy<RawTrace,number>(raw, (group) => group[1])
-        this.byToBlockId = Tracer.groupBy<RawTrace,number>(raw, (group) =>group[2])
+        this.byId = groupBy<RawTrace,number>(raw, (group) => group[0])
+        this.byFromBlockId = groupBy<RawTrace,number>(raw, (group) => group[1])
+        this.byToBlockId = groupBy<RawTrace,number>(raw, (group) =>group[2])
     }
-    static groupBy <T, K extends PropertyKey>(
-        items: Iterable<T>,
-        callbackFn: (item: T, index: number) => K
-    ): Record<K, T[]> {
-        const obj = Object.create(null); // Spec requires a null-prototype object
-        let i = 0;
-        for (const item of items) {
-            const key = callbackFn(item, i++);
-            obj[key] ??= [];
-            obj[key].push(item);
-        }
-        return obj;
-    };
 }
+export function groupBy <T, K extends PropertyKey>(
+    items: Iterable<T>,
+    callbackFn: (item: T, index: number) => K
+): Record<K, T[]> {
+    const obj = Object.create(null); // Spec requires a null-prototype object
+    let i = 0;
+    for (const item of items) {
+    const key = callbackFn(item, i++);
+    obj[key] ??= [];
+    obj[key].push(item);
+}
+return obj;
+};
